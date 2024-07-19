@@ -1,14 +1,21 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { MongooseModule } from '@nestjs/mongoose';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { Artefact, ArtefactSchema } from './schemas/artifact.schema';
+import { winstonOptions, LoggerMiddleware } from '@app/common';
+import { WinstonModule } from 'nest-winston';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    WinstonModule.forRootAsync({
+      useFactory: () => winstonOptions('NEST_TCP_MICROSERVICE'),
     }),
     ClientsModule.registerAsync([
       {
@@ -23,8 +30,26 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         }),
       },
     ]),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get('MONGODB_URI'),
+      }),
+    }),
+    MongooseModule.forFeature([
+      {
+        name: Artefact.name,
+        schema: ArtefactSchema,
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

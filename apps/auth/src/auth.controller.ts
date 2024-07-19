@@ -9,7 +9,6 @@ export class AuthController {
 
   @EventPattern('hello_world')
   getHello(data: HelloWorldEvent): string {
-    console.log('Auth Controller get called', data);
     return this.authService.getHello(data);
   }
 
@@ -17,4 +16,7 @@ export class AuthController {
   async namasteDuniya(): Promise<string> {
     return 'Namaste Duniya!';
   }
+
+  // @MessagePattern({ cmd: 'signup' })
+  // async signup(): Promise<string> {}
 }
